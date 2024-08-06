@@ -1,6 +1,6 @@
 blueprint:
   name: ☕ Coffee v1 (Schedule-based or Wattage Detection)
-  description: "Advanced coffee machine automation with multiple triggering options: schedule-based, wattage-based heat-up detection, user-defined timing, and manual trigger. Features include notifications and auto-shutoff. 📅☕⚡"
+  description: "Advanced coffee machine automation with multiple triggering options: schedule-based, wattage-based heat-up detection, user-defined timing, and manual trigger. Features include notifications, auto-shutoff, and manual shutoff detection. 📅☕⚡"
   domain: automation
   input:
     coffee_switch:
@@ -37,6 +37,12 @@ blueprint:
     manual_trigger:
       name: Enable Manual Trigger
       description: "If enabled, the automation can also be triggered when the coffee machine switch is manually turned on. This allows for on-demand use in addition to scheduled use. 🔄"
+      default: false
+      selector:
+        boolean: {}
+    manual_shutoff_detection:
+      name: Enable Manual Shutoff Detection
+      description: "If enabled, the automation will stop when the coffee machine is manually turned off. ⏹️"
       default: false
       selector:
         boolean: {}
@@ -136,6 +142,7 @@ blueprint:
       default: 00:05:00
       selector:
         time: {}
+  source_url: https://github.com/lasharor/espresso-blueprint/blob/main/espresso.yaml
 variables:
   warmup_mode: !input warmup_mode
   coffee_switch: !input coffee_switch
@@ -143,6 +150,7 @@ variables:
   notification_device: !input notification_device
   schedule_entity: !input schedule_entity
   manual_trigger: !input manual_trigger
+  manual_shutoff_detection: !input manual_shutoff_detection
   warmup_delay: !input warmup_delay
   wattage_sensor: !input wattage_sensor
   wattage_threshold: !input wattage_threshold
@@ -165,11 +173,25 @@ trigger:
   to: 'on'
   id: manual_trigger
   enabled: !input manual_trigger
+- platform: state
+  entity_id: !input coffee_switch
+  to: 'off'
+  id: manual_shutoff
 condition:
 - condition: state
   entity_id: !input person_home
   state: home
 action:
+- choose:
+  - conditions:
+    - condition: and
+      conditions:
+        - condition: template
+          value_template: '{{ manual_shutoff_detection }}'
+        - condition: trigger
+          id: manual_shutoff
+    sequence:
+      - stop: "Coffee machine manually turned off. Stopping automation."
 - choose:
   - conditions:
     - condition: trigger
