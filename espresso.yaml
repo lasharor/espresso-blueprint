@@ -1,5 +1,5 @@
 blueprint:
-  name: ☕ Coffee v1 (Schedule-based or Wattage Detection)
+  name: ☕ Coffee v1.1 (Schedule-based or Wattage Detection)
   description: "Advanced coffee machine automation with multiple triggering options: schedule-based, wattage-based heat-up detection, user-defined timing, and manual trigger. Features include notifications, auto-shutoff, and manual shutoff detection. 📅☕⚡"
   domain: automation
   input:
@@ -100,7 +100,7 @@ blueprint:
           step: 1.0
     wattage_sum_helper:
       name: Wattage Sum Helper
-      description: Select an input_number helper to store the sum of wattage readings. This is used for calculating the average power consumption. Minimum should be 0, maximum 7 ⚡
+      description: Select an input_number helper to store the sum of wattage readings. This is used for calculating the average power consumption. Minimum should be 0, maximum 20000 ⚡
       selector:
         entity:
           domain:
@@ -108,7 +108,7 @@ blueprint:
           multiple: false
     wattage_count_helper:
       name: Wattage Count Helper
-      description: "Select an input_number helper to store the count of wattage readings. This is used alongside the sum helper for average calculations. Minumum should be 0, maximum 20000 📈"
+      description: "Select an input_number helper to store the count of wattage readings. This is used alongside the sum helper for average calculations. Minumum should be 0, maximum 7 📈"
       selector:
         entity:
           domain:
