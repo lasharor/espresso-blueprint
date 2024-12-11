@@ -1,5 +1,5 @@
 blueprint:
-  name: ☕ Coffee v1.1 (Schedule-based or Wattage Detection)
+  name: ☕ Coffee v1.2 (Schedule-based or Wattage Detection)
   description: "Advanced coffee machine automation with multiple triggering options: schedule-based, wattage-based heat-up detection, user-defined timing, and manual trigger. Features include notifications, auto-shutoff, and manual shutoff detection. 📅☕⚡"
   domain: automation
   input:
@@ -57,9 +57,6 @@ blueprint:
             value: time
           - label: Wattage-based
             value: wattage
-          sort: false
-          multiple: false
-          custom_value: false
     warmup_delay:
       name: Warmup Delay
       description: 'For time-based mode: Set the duration to wait for the coffee machine to warm up. This should be long enough for your machine to be ready to brew. ⏱️'
@@ -86,7 +83,6 @@ blueprint:
           max: 1000.0
           unit_of_measurement: W
           step: 1.0
-          mode: slider
     wattage_duration:
       name: Wattage Duration
       description: 'For wattage-based mode: Set how long (in minutes) to continue monitoring after the machine is detected as warmed up. This ensures the machine stays ready. ⏳'
@@ -96,24 +92,7 @@ blueprint:
           min: 1.0
           max: 30.0
           unit_of_measurement: minutes
-          mode: slider
           step: 1.0
-    wattage_sum_helper:
-      name: Wattage Sum Helper
-      description: Select an input_number helper to store the sum of wattage readings. This is used for calculating the average power consumption. Minimum should be 0, maximum 20000 ⚡
-      selector:
-        entity:
-          domain:
-          - input_number
-          multiple: false
-    wattage_count_helper:
-      name: Wattage Count Helper
-      description: "Select an input_number helper to store the count of wattage readings. This is used alongside the sum helper for average calculations. Minumum should be 0, maximum 7 📈"
-      selector:
-        entity:
-          domain:
-          - input_number
-          multiple: false
     first_message:
       name: First Notification Message
       description: "Customize the message sent when the coffee machine is warmed up and ready to use. 📩"
@@ -121,7 +100,6 @@ blueprint:
       selector:
         text:
           multiline: false
-          multiple: false
     second_delay:
       name: Second Delay
       description: Set the time to wait after the first notification before sending a reminder that the machine will turn off soon. ⏱️
@@ -135,161 +113,36 @@ blueprint:
       selector:
         text:
           multiline: false
-          multiple: false
     final_delay:
       name: Final Delay
       description: Set the time to wait after the second notification before automatically turning off the coffee machine. This is the last chance to grab coffee before shutdown. ⏱️
       default: 00:05:00
       selector:
         time: {}
-  source_url: https://github.com/lasharor/espresso-blueprint/blob/main/espresso.yaml
 variables:
-  warmup_mode: !input warmup_mode
   coffee_switch: !input coffee_switch
-  person_home: !input person_home
   notification_device: !input notification_device
+  person_home: !input person_home
   schedule_entity: !input schedule_entity
   manual_trigger: !input manual_trigger
   manual_shutoff_detection: !input manual_shutoff_detection
-  warmup_delay: !input warmup_delay
-  wattage_sensor: !input wattage_sensor
-  wattage_threshold: !input wattage_threshold
-  wattage_duration: !input wattage_duration
-  wattage_sum_helper: !input wattage_sum_helper
-  wattage_count_helper: !input wattage_count_helper
   first_message: !input first_message
-  second_delay: !input second_delay
   second_message: !input second_message
+  second_delay: !input second_delay
   final_delay: !input final_delay
-  is_time_based: '{{ warmup_mode == ''time'' }}'
-  is_wattage_based: '{{ warmup_mode == ''wattage'' }}'
 trigger:
 - platform: state
   entity_id: !input schedule_entity
   to: 'on'
-  id: schedule_trigger
 - platform: state
   entity_id: !input coffee_switch
   to: 'on'
-  id: manual_trigger
   enabled: !input manual_trigger
-- platform: state
-  entity_id: !input coffee_switch
-  to: 'off'
-  id: manual_shutoff
 condition:
 - condition: state
   entity_id: !input person_home
   state: home
 action:
-- choose:
-  - conditions:
-    - condition: and
-      conditions:
-        - condition: template
-          value_template: '{{ manual_shutoff_detection }}'
-        - condition: trigger
-          id: manual_shutoff
-    sequence:
-      - stop: "Coffee machine manually turned off. Stopping automation."
-- choose:
-  - conditions:
-    - condition: trigger
-      id: schedule_trigger
-    sequence:
-    - device_id: !input notification_device
-      domain: mobile_app
-      type: notify
-      message: Do you want coffee? ☕
-      data:
-        actions:
-        - action: 'NO'
-          title: 'No'
-        - action: 'YES'
-          title: 'Yes'
-        - action: IN_15
-          title: In 15 minutes
-        - action: IN_30
-          title: In 30 minutes
-    - wait_for_trigger:
-      - platform: event
-        event_type: mobile_app_notification_action
-      timeout: 00:01:00
-      continue_on_timeout: true
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ wait.trigger.event.data.action == ''NO'' if wait.trigger else false }}'
-        sequence:
-        - stop: User declined coffee
-      - conditions:
-        - condition: template
-          value_template: '{{ wait.trigger.event.data.action == ''IN_15'' if wait.trigger else false }}'
-        sequence:
-        - delay: 00:15:00
-      - conditions:
-        - condition: template
-          value_template: '{{ wait.trigger.event.data.action == ''IN_30'' if wait.trigger else false }}'
-        sequence:
-        - delay: 00:30:00
-      default:
-        - service: switch.turn_on
-          target:
-            entity_id: !input coffee_switch
-  default:
-    - service: switch.turn_on
-      target:
-        entity_id: !input coffee_switch
-- choose:
-  - conditions:
-    - condition: template
-      value_template: '{{ is_time_based }}'
-    sequence:
-    - delay: !input warmup_delay
-  - conditions:
-    - condition: template
-      value_template: '{{ is_wattage_based }}'
-    sequence:
-    - service: input_number.set_value
-      data:
-        entity_id: !input wattage_sum_helper
-        value: 0
-    - service: input_number.set_value
-      data:
-        entity_id: !input wattage_count_helper
-        value: 0
-    - repeat:
-        until:
-        - condition: template
-          value_template: '{% set count = states(wattage_count_helper) | float(0) %} {% set sum = states(wattage_sum_helper) | float(0) %} {% set avg = (sum / count) if count > 0 else 1000 %} {{ avg < wattage_threshold and count == 6 }}'
-        sequence:
-        - delay:
-            seconds: 10
-        - service: input_number.set_value
-          data:
-            entity_id: !input wattage_sum_helper
-            value: '{{ (states(wattage_sum_helper) | float(0)) + (states(wattage_sensor) | float(0)) }}'
-        - service: input_number.set_value
-          data:
-            entity_id: !input wattage_count_helper
-            value: '{{ (states(wattage_count_helper) | float(0)) + 1 }}'
-        - choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ states(wattage_count_helper) | float == 7 }}'
-            sequence:
-            - service: input_number.set_value
-              data:
-                entity_id: !input wattage_sum_helper
-                value: 0
-            - service: input_number.set_value
-              data:
-                entity_id: !input wattage_count_helper
-                value: 0
-    - delay:
-        minutes: '{{ wattage_duration }}'
-  default:
-  - delay: !input warmup_delay
 - device_id: !input notification_device
   domain: mobile_app
   type: notify
@@ -299,8 +152,19 @@ action:
   domain: mobile_app
   type: notify
   message: !input second_message
+  data:
+    actions:
+      - action: CANCEL_SHUTDOWN
+        title: "Don't turn off the coffee machine"
 - delay: !input final_delay
-- service: switch.turn_off
-  target:
-    entity_id: !input coffee_switch
+- choose:
+  - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''CANCEL_SHUTDOWN'' if wait.trigger else false }}'
+    sequence:
+      - stop: "User canceled the coffee machine shutdown"
+  default:
+    - service: switch.turn_off
+      target:
+        entity_id: !input coffee_switch
 mode: restart
