@@ -125,26 +125,26 @@ action:
       start_energy: "{{ states(wattage_sensor) | float(0) }}"
 
   # Send time-of-day-customized notification
-  - service: notify.mobile_app_<YOUR_DEVICE_ID>  # Replace with proper device ID
-    data:
-      title: "Coffee Machine is Ready"
-      message: >
-        {% if now().hour < 12 %}
-          Good morning! Your coffee machine is ready to brew ☕.
-        {% elif now().hour < 18 %}
-          Coffee break time! Your coffee machine is warmed up ☕.
-        {% else %}
-          Evening coffee alert! Your coffee machine is ready to brew ☕.
-        {% endif %}
+  - device_id: !input notification_device
+    domain: mobile_app
+    type: notify
+    message: >
+      {% if now().hour < 12 %}
+        Good morning! Your coffee machine is ready to brew ☕.
+      {% elif now().hour < 18 %}
+        Coffee break time! Your coffee machine is warmed up ☕.
+      {% else %}
+        Evening coffee alert! Your coffee machine is ready to brew ☕.
+      {% endif %}
 
   # Wait for the user to brew their coffee
   - delay: "00:15:00"  # Time delay before sending the idle notification (customize as necessary)
 
   # Send idle notification
-  - service: notify.mobile_app_<YOUR_DEVICE_ID>  # Replace with proper device ID
-    data:
-      title: "Coffee Machine Reminder"
-      message: "{{ idle_message }}"
+  - device_id: !input notification_device
+    domain: mobile_app
+    type: notify
+    message: "{{ idle_message }}"
 
   # Final shutdown delay
   - delay: "00:05:00"
@@ -165,19 +165,19 @@ action:
       entity_id: !input coffee_switch
 
   # Notify with final shutdown message including cost insights
-  - service: notify.mobile_app_<YOUR_DEVICE_ID>  # Replace with proper device ID
-    data:
-      title: "Coffee Machine Turned Off"
-      message: >
-        {{ shutdown_message }}
-        {% if energy_used_kwh > 0 %}
-          {% if currency == 'USD' %}
-            Total energy used: {{ energy_used_kwh }} kWh. Cost: ${{ energy_cost_usd }} USD. 💵
-          {% elif currency == 'EUR' %}
-            Total energy used: {{ energy_used_kwh }} kWh. Cost: €{{ energy_cost_eur }} EUR. 💶
-          {% else %}
-            Total energy used: {{ energy_used_kwh }} kWh. Cost not calculated due to unsupported currency.
-          {% endif %}
+  - device_id: !input notification_device
+    domain: mobile_app
+    type: notify
+    message: >
+      {{ shutdown_message }}
+      {% if energy_used_kwh > 0 %}
+        {% if currency == 'USD' %}
+          Total energy used: {{ energy_used_kwh }} kWh. Cost: ${{ energy_cost_usd }} USD. 💵
+        {% elif currency == 'EUR' %}
+          Total energy used: {{ energy_used_kwh }} kWh. Cost: €{{ energy_cost_eur }} EUR. 💶
         {% else %}
-          No energy usage detected for cost calculation.
+          Total energy used: {{ energy_used_kwh }} kWh. Cost not calculated due to unsupported currency.
         {% endif %}
+      {% else %}
+        No energy usage detected for cost calculation.
+      {% endif %}
