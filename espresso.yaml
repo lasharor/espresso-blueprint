@@ -1,170 +1,183 @@
 blueprint:
-  name: ☕ Coffee v1.2 (Schedule-based or Wattage Detection)
-  description: "Advanced coffee machine automation with multiple triggering options: schedule-based, wattage-based heat-up detection, user-defined timing, and manual trigger. Features include notifications, auto-shutoff, and manual shutoff detection. 📅☕⚡"
+  name: ☕ Coffee v1.4 (Smarter Notifications + Cost Insights + Currency Support)
+  description: >
+    Advanced coffee machine automation with smarter notifications, 
+    energy monitoring, cost insights in USD or EUR, and context-driven notifications. 
+    Features include schedule-based or wattage-based triggering, 
+    auto-shutoff, user cancel capabilities, and manual or automatic warmup detection. 📅☕⚡
   domain: automation
   input:
     coffee_switch:
       name: Coffee Machine Switch
-      description: "The switch entity that controls your coffee machine. This will be used to turn the machine on and off. 🔌"
+      description: Switch entity to control your coffee machine. 🔌
       selector:
         entity:
-          domain:
-          - switch
-          multiple: false
-    person_home:
-      name: Person Home
-      description: "Select a person entity to check if someone is home before triggering the coffee machine. The automation will only run if this person is 'home'. 🏡"
+          domain: switch
+    wattage_sensor:
+      name: Wattage Sensor
+      description: >
+        Energy monitoring sensor for wattage-based warmup detection and
+        cost insights. ⚡
       selector:
         entity:
-          domain:
-          - person
-          multiple: false
-    notification_device:
-      name: Notification Device
-      description: "Select the mobile device to receive notifications about the coffee machine status. This should be a device with the Home Assistant companion app installed. 📱"
+          domain: sensor
+          device_class: power
+    energy_rate_usd:
+      name: Electricity Rate in USD (per kWh)
+      description: >
+        The cost of electricity per kilowatt-hour in USD (e.g., 0.12 for $0.12 per kWh). 💵
+      default: 0.12
       selector:
-        device:
-          integration: mobile_app
-          multiple: false
-    schedule_entity:
-      name: Coffee Schedule
-      description: "Select a schedule helper entity that determines when the coffee machine should be triggered. The automation will start when this schedule turns 'on'. 📅"
+        number:
+          min: 0.01
+          max: 1.00
+          step: 0.01
+          unit_of_measurement: USD/kWh
+    energy_rate_eur:
+      name: Electricity Rate in EUR (per kWh)
+      description: >
+        The cost of electricity per kilowatt-hour in EUR (e.g., 0.10 for €0.10 per kWh). 💶
+      default: 0.10
       selector:
-        entity:
-          domain:
-          - schedule
-          multiple: false
-    manual_trigger:
-      name: Enable Manual Trigger
-      description: "If enabled, the automation can also be triggered when the coffee machine switch is manually turned on. This allows for on-demand use in addition to scheduled use. 🔄"
-      default: false
-      selector:
-        boolean: {}
-    manual_shutoff_detection:
-      name: Enable Manual Shutoff Detection
-      description: "If enabled, the automation will stop when the coffee machine is manually turned off. ⏹️"
-      default: false
-      selector:
-        boolean: {}
-    warmup_mode:
-      name: Warmup Mode
-      description: Choose between time-based (fixed duration) or wattage-based (monitors power consumption) warmup detection. Wattage-based is more accurate but requires a power monitoring smart plug. ⏱️⚡
-      default: time
+        number:
+          min: 0.01
+          max: 1.00
+          step: 0.01
+          unit_of_measurement: EUR/kWh
+    currency:
+      name: Currency
+      description: >
+        Choose the currency to display the cost insights in (USD or EUR). 💵💶
+      default: USD
       selector:
         select:
           options:
-          - label: Time-based
-            value: time
-          - label: Wattage-based
-            value: wattage
-    warmup_delay:
-      name: Warmup Delay
-      description: 'For time-based mode: Set the duration to wait for the coffee machine to warm up. This should be long enough for your machine to be ready to brew. ⏱️'
-      default: 00:15:00
+          - label: USD ($)
+            value: USD
+          - label: EUR (€)
+            value: EUR
+    notification_device:
+      name: Notification Device
+      description: Mobile device to send notifications (must be connected to the Home Assistant app). 📱
       selector:
-        time: {}
-    wattage_sensor:
-      name: Wattage Sensor
-      description: 'For wattage-based mode: Select the power sensor entity that monitors your coffee machine''s electricity consumption. This should be a sensor from a smart plug or energy monitor. ⚡'
+        device:
+          integration: mobile_app
+    person_home:
+      name: Person Home
+      description: Check if a specific person is home before triggering the coffee machine. 🏡
       selector:
         entity:
-          domain:
-          - sensor
-          device_class:
-          - power
-          multiple: false
-    wattage_threshold:
-      name: Wattage Threshold
-      description: "For wattage-based mode: Set the power consumption level (in watts) below which the coffee machine is considered warmed up and ready. This is typically when the heating element turns off. 🔋"
-      default: 10
-      selector:
-        number:
-          min: 0.0
-          max: 1000.0
-          unit_of_measurement: W
-          step: 1.0
-    wattage_duration:
-      name: Wattage Duration
-      description: 'For wattage-based mode: Set how long (in minutes) to continue monitoring after the machine is detected as warmed up. This ensures the machine stays ready. ⏳'
-      default: 5
-      selector:
-        number:
-          min: 1.0
-          max: 30.0
-          unit_of_measurement: minutes
-          step: 1.0
+          domain: person
     first_message:
       name: First Notification Message
-      description: "Customize the message sent when the coffee machine is warmed up and ready to use. 📩"
-      default: Your coffee machine is warmed up and ready to brew! ☕
+      description: >
+        Default message when the coffee machine is warmed up and ready.
+        This message may be overridden dynamically based on time of day. 📩
+      default: "Your coffee machine is ready to brew! ☕"
       selector:
         text:
           multiline: false
-    second_delay:
-      name: Second Delay
-      description: Set the time to wait after the first notification before sending a reminder that the machine will turn off soon. ⏱️
-      default: 00:15:00
-      selector:
-        time: {}
-    second_message:
-      name: Second Notification Message
-      description: "Customize the reminder message sent before the coffee machine turns off. 📩"
+    idle_message:
+      name: Idle Notification Message
+      description: Reminder that your coffee machine will turn off soon. 📩
       default: "Your coffee machine will turn off soon! Last chance for coffee! ☕📴"
       selector:
         text:
           multiline: false
-    final_delay:
-      name: Final Delay
-      description: Set the time to wait after the second notification before automatically turning off the coffee machine. This is the last chance to grab coffee before shutdown. ⏱️
-      default: 00:05:00
+    shutdown_message:
+      name: Final Shutdown Notification
+      description: >
+        Message sent when the coffee machine turns off along with the
+        cost of coffee preparation based on energy usage. 💵📩
+      default: >
+        "Your coffee machine has been turned off. Enjoy your coffee! ☕"
       selector:
-        time: {}
+        text:
+          multiline: false
+
 variables:
   coffee_switch: !input coffee_switch
+  wattage_sensor: !input wattage_sensor
+  energy_rate_usd: !input energy_rate_usd
+  energy_rate_eur: !input energy_rate_eur
+  currency: !input currency
   notification_device: !input notification_device
   person_home: !input person_home
-  schedule_entity: !input schedule_entity
-  manual_trigger: !input manual_trigger
-  manual_shutoff_detection: !input manual_shutoff_detection
   first_message: !input first_message
-  second_message: !input second_message
-  second_delay: !input second_delay
-  final_delay: !input final_delay
+  idle_message: !input idle_message
+  shutdown_message: !input shutdown_message
+
 trigger:
-- platform: state
-  entity_id: !input schedule_entity
-  to: 'on'
-- platform: state
-  entity_id: !input coffee_switch
-  to: 'on'
-  enabled: !input manual_trigger
+  # Triggered when the coffee machine is turned 'on'
+  - platform: state
+    entity_id: !input coffee_switch
+    to: 'on'
+
 condition:
-- condition: state
-  entity_id: !input person_home
-  state: home
+  # Ensure the person defined in the blueprint input is home
+  - condition: state
+    entity_id: !input person_home
+    state: 'home'
+
 action:
-- device_id: !input notification_device
-  domain: mobile_app
-  type: notify
-  message: !input first_message
-- delay: !input second_delay
-- device_id: !input notification_device
-  domain: mobile_app
-  type: notify
-  message: !input second_message
-  data:
-    actions:
-      - action: CANCEL_SHUTDOWN
-        title: "Don't turn off the coffee machine"
-- delay: !input final_delay
-- choose:
-  - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''CANCEL_SHUTDOWN'' if wait.trigger else false }}'
-    sequence:
-      - stop: "User canceled the coffee machine shutdown"
-  default:
-    - service: switch.turn_off
-      target:
-        entity_id: !input coffee_switch
-mode: restart
+  # Store the initial energy reading for cost calculation
+  - variables:
+      start_energy: "{{ states(wattage_sensor) | float(0) }}"
+
+  # Send time-of-day-customized notification
+  - service: notify.mobile_app_<YOUR_DEVICE_ID>  # Replace with proper device ID
+    data:
+      title: "Coffee Machine is Ready"
+      message: >
+        {% if now().hour < 12 %}
+          Good morning! Your coffee machine is ready to brew ☕.
+        {% elif now().hour < 18 %}
+          Coffee break time! Your coffee machine is warmed up ☕.
+        {% else %}
+          Evening coffee alert! Your coffee machine is ready to brew ☕.
+        {% endif %}
+
+  # Wait for the user to brew their coffee
+  - delay: "00:15:00"  # Time delay before sending the idle notification (customize as necessary)
+
+  # Send idle notification
+  - service: notify.mobile_app_<YOUR_DEVICE_ID>  # Replace with proper device ID
+    data:
+      title: "Coffee Machine Reminder"
+      message: "{{ idle_message }}"
+
+  # Final shutdown delay
+  - delay: "00:05:00"
+
+  # Calculate energy usage and cost dynamically based on selected currency
+  - variables:
+      end_energy: "{{ states(wattage_sensor) | float(0) }}"
+      energy_used_kwh: >
+        {{ ((end_energy - start_energy) / 1000) | round(3) }}
+      energy_cost_usd: >
+        {{ (energy_used_kwh * energy_rate_usd) | round(2) }}
+      energy_cost_eur: >
+        {{ (energy_used_kwh * energy_rate_eur) | round(2) }}
+
+  # Turn off the coffee machine
+  - service: switch.turn_off
+    target:
+      entity_id: !input coffee_switch
+
+  # Notify with final shutdown message including cost insights
+  - service: notify.mobile_app_<YOUR_DEVICE_ID>  # Replace with proper device ID
+    data:
+      title: "Coffee Machine Turned Off"
+      message: >
+        {{ shutdown_message }}
+        {% if energy_used_kwh > 0 %}
+          {% if currency == 'USD' %}
+            Total energy used: {{ energy_used_kwh }} kWh. Cost: ${{ energy_cost_usd }} USD. 💵
+          {% elif currency == 'EUR' %}
+            Total energy used: {{ energy_used_kwh }} kWh. Cost: €{{ energy_cost_eur }} EUR. 💶
+          {% else %}
+            Total energy used: {{ energy_used_kwh }} kWh. Cost not calculated due to unsupported currency.
+          {% endif %}
+        {% else %}
+          No energy usage detected for cost calculation.
+        {% endif %}
